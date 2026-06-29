@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls.js'
 
 /**
  * The runtime context handed to every demo. A demo only ever talks to Three.js
@@ -11,7 +11,8 @@ export interface ThreeContext {
   scene: THREE.Scene
   camera: THREE.PerspectiveCamera
   renderer: THREE.WebGLRenderer
-  controls: OrbitControls
+  /** TrackballControls — free rotation in any direction (no locked up-axis). */
+  controls: TrackballControls
   /** The DOM element the canvas lives in. Sizing is derived from this, not `window`. */
   container: HTMLElement
 }
@@ -24,10 +25,11 @@ export interface HarnessOptions {
   near?: number
   far?: number
   cameraPosition?: [number, number, number]
-  /** OrbitControls target. Defaults to the origin. */
+  /** Controls target. Defaults to the origin. */
   target?: [number, number, number]
+  /** Momentum after release (TrackballControls dynamic damping). Default true. */
   enableDamping?: boolean
-  /** Clamp how close the camera can orbit — keeps it from flying inside the surface. */
+  /** Clamp how close/far the camera can get — keeps it from flying inside the surface. */
   minDistance?: number
   maxDistance?: number
   /** Called ~twice a second with the rounded frame rate. */
@@ -71,13 +73,15 @@ export function createHarness(container: HTMLElement, opts: HarnessOptions = {})
   const camera = new THREE.PerspectiveCamera(fov, 1, near, far)
   camera.position.set(...cameraPosition)
 
-  const controls = new OrbitControls(camera, renderer.domElement)
-  controls.enableDamping = enableDamping
-  controls.dampingFactor = 0.08
+  const controls = new TrackballControls(camera, renderer.domElement)
+  controls.rotateSpeed = 3.0
+  controls.zoomSpeed = 1.2
+  controls.panSpeed = 0.8
+  controls.staticMoving = !enableDamping // false → momentum/glide after release
+  controls.dynamicDampingFactor = 0.15
   if (opts.minDistance != null) controls.minDistance = opts.minDistance
   if (opts.maxDistance != null) controls.maxDistance = opts.maxDistance
   controls.target.set(...target)
-  controls.update()
 
   const ctx: ThreeContext = { scene, camera, renderer, controls, container }
 
@@ -88,6 +92,9 @@ export function createHarness(container: HTMLElement, opts: HarnessOptions = {})
     renderer.setSize(w, h, false)
     camera.aspect = w / h
     camera.updateProjectionMatrix()
+    // TrackballControls caches the element's screen rect; refresh it on resize
+    // or rotation math (which maps pixels → arcball) drifts.
+    controls.handleResize()
   }
   resize()
   const ro = new ResizeObserver(resize)

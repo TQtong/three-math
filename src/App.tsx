@@ -12,7 +12,7 @@ export default function App() {
       <aside className="sidebar">
         <div className="head">
           <b>Three · Math</b>
-          <span>数理与编程 · 可视化案例集</span>
+          <span>可视化案例集</span>
         </div>
         <nav>
           {demos.map((d) => (

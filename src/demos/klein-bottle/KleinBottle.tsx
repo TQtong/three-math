@@ -33,9 +33,9 @@ export default function KleinBottle() {
       setVCount(ctrl.rebuild(120, 0.42))
       ctrl.setSpeed(0.2)
       ctrl.setAutoRotate(true)
-      // any user interaction (orbit / pan / zoom) stops the auto-spin
+      // any user interaction (rotate / pan / zoom) stops the auto-spin
       ctx.controls.addEventListener('start', () => {
-        ctx.controls.autoRotate = false
+        ctrl.setAutoRotate(false)
         setAutoRotate(false)
       })
       return ctrl
@@ -86,7 +86,7 @@ export default function KleinBottle() {
       <div className="topbar">
         <div className="brand">
           <b>Klein Bottle</b>
-          <span>克莱因瓶 · 数理与编程</span>
+          <span>克莱因瓶</span>
         </div>
         <div className="tag">non-orientable surface</div>
       </div>
@@ -136,7 +136,7 @@ export default function KleinBottle() {
       </div>
 
       <div className="hint">
-        <kbd>drag</kbd> orbit &nbsp; <kbd>scroll</kbd> zoom
+        <kbd>drag</kbd> rotate (any axis) &nbsp; <kbd>scroll</kbd> zoom
         <br />
         <kbd>right-drag</kbd> pan
       </div>

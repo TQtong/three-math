@@ -16,10 +16,12 @@ export interface KleinController extends DemoInstance {
   setSpeed(speed: number): void
 }
 
-const SPEED_SCALE = 8 // maps the 0..1 UI speed onto OrbitControls.autoRotateSpeed
+// rad/sec per unit of the 0..1 UI speed (auto-rotate spins the model itself,
+// since TrackballControls has no built-in autoRotate)
+const SPEED_SCALE = 1.6
 
 export function createKleinScene(ctx: ThreeContext): KleinController {
-  const { scene, controls } = ctx
+  const { scene } = ctx
 
   const root = new THREE.Group()
   scene.add(root)
@@ -63,6 +65,8 @@ export function createKleinScene(ctx: ThreeContext): KleinController {
   let mode: RenderMode = 'solid'
   let blend = 0.42
   let seamOn = true
+  let autoRotate = true
+  let spinSpeed = 0.2 // 0..1
 
   function makeSurface() {
     if (surface) root.remove(surface)
@@ -108,10 +112,11 @@ export function createKleinScene(ctx: ThreeContext): KleinController {
     return geometry.attributes.position.count
   }
 
-  controls.autoRotate = true
-  controls.autoRotateSpeed = 0.2 * SPEED_SCALE
-
   return {
+    // spin the model itself when auto-rotate is on (control-agnostic)
+    update(dt) {
+      if (autoRotate) root.rotation.y += spinSpeed * SPEED_SCALE * dt
+    },
     rebuild,
     setMode(m) {
       mode = m
@@ -122,10 +127,10 @@ export function createKleinScene(ctx: ThreeContext): KleinController {
       updateSeam()
     },
     setAutoRotate(on) {
-      controls.autoRotate = on
+      autoRotate = on
     },
     setSpeed(speed) {
-      controls.autoRotateSpeed = speed * SPEED_SCALE
+      spinSpeed = speed
     },
     dispose() {
       if (seamLine) {
