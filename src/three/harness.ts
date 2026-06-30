@@ -1,5 +1,8 @@
 import * as THREE from 'three'
 import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls.js'
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
 
 /**
  * The runtime context handed to every demo. A demo only ever talks to Three.js
@@ -34,6 +37,8 @@ export interface HarnessOptions {
   maxDistance?: number
   /** Called ~twice a second with the rounded frame rate. */
   onFps?: (fps: number) => void
+  /** Add a bloom glow pass — for additive/glowing scenes (e.g. attractors). */
+  bloom?: { strength?: number; radius?: number; threshold?: number }
 }
 
 export interface Harness {
@@ -85,11 +90,28 @@ export function createHarness(container: HTMLElement, opts: HarnessOptions = {})
 
   const ctx: ThreeContext = { scene, camera, renderer, controls, container }
 
+  // --- optional bloom post-processing ---
+  let composer: EffectComposer | null = null
+  if (opts.bloom) {
+    composer = new EffectComposer(renderer)
+    composer.setPixelRatio(renderer.getPixelRatio())
+    composer.addPass(new RenderPass(scene, camera))
+    composer.addPass(
+      new UnrealBloomPass(
+        new THREE.Vector2(1, 1),
+        opts.bloom.strength ?? 0.9,
+        opts.bloom.radius ?? 0.5,
+        opts.bloom.threshold ?? 0,
+      ),
+    )
+  }
+
   // --- sizing ---
   const resize = () => {
     const w = container.clientWidth || 1
     const h = container.clientHeight || 1
     renderer.setSize(w, h, false)
+    composer?.setSize(w, h)
     camera.aspect = w / h
     camera.updateProjectionMatrix()
     // TrackballControls caches the element's screen rect; refresh it on resize
@@ -112,7 +134,8 @@ export function createHarness(container: HTMLElement, opts: HarnessOptions = {})
     const elapsed = clock.elapsedTime
     controls.update()
     updateFn?.(dt, elapsed)
-    renderer.render(scene, camera)
+    if (composer) composer.render()
+    else renderer.render(scene, camera)
 
     if (opts.onFps) {
       fpsFrames++
@@ -135,6 +158,7 @@ export function createHarness(container: HTMLElement, opts: HarnessOptions = {})
       cancelAnimationFrame(raf)
       ro.disconnect()
       controls.dispose()
+      composer?.dispose()
       renderer.dispose()
       renderer.domElement.remove()
     },

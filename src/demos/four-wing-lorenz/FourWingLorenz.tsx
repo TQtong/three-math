@@ -50,6 +50,7 @@ export default function FourWingLorenz() {
       cameraPosition: [0, 2, 76], // nearly straight down +z at the pinwheel
       minDistance: 18,
       maxDistance: 320,
+      bloom: { strength: 0.6, radius: 0.45, threshold: 0.08 }, // soft glow, strands stay defined
       onFps: setFps,
     },
   )
