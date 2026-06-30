@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useThreeScene } from '@/three/useThreeScene'
-import { Panel, Segmented, Slider, Toggle, Readout } from '@/components/controls'
+import { Panel, Slider, Toggle, Readout } from '@/components/controls'
 import { Equation } from '@/components/Equation'
-import { createLorenzScene, type Density, type LorenzController } from './lorenzScene'
+import { createLorenzScene, MAX_TRAJ, type LorenzController } from './lorenzScene'
 
 const TEX = String.raw`
 \begin{aligned}
@@ -11,14 +11,12 @@ const TEX = String.raw`
 \dot{z} &= 2x^{3}y - 2x y^{3} - c\,z \qquad (a=10,\; b=28,\; c=\tfrac{8}{3})
 \end{aligned}`
 
-const DENSITY_OPTIONS: { value: Density; label: string }[] = [
-  { value: 'low', label: 'Low' },
-  { value: 'med', label: 'Med' },
-  { value: 'high', label: 'High' },
-]
+/** Slider value (0..100) → number of strands drawn. */
+const strandsFor = (v: number) => Math.max(1, Math.round((v / 100) * MAX_TRAJ))
 
 export default function FourWingLorenz() {
-  const [density, setDensity] = useState<Density>('med')
+  const [densityV, setDensityV] = useState(25) // 0..100 → strand fraction (default low)
+  const [glowV, setGlowV] = useState(18) // 0..100 → bloom strength (default low/soft)
   const [spd, setSpd] = useState(15) // 0..100 → speed/100
   const [flowV, setFlowV] = useState(50) // 0..100 → flow/100
   const [particles, setParticles] = useState(true)
@@ -29,13 +27,15 @@ export default function FourWingLorenz() {
 
   const { containerRef, instanceRef } = useThreeScene<LorenzController>(
     (ctx) => {
-      // No integration here — the scene mounts empty so the canvas paints
-      // immediately; the (expensive) first build is kicked off deferred below.
+      // The scene mounts empty so the canvas paints immediately; the (expensive)
+      // one-time integration is kicked off deferred below.
       const ctrl = createLorenzScene(ctx)
       ctrl.setSpeed(0.15)
       ctrl.setFlow(0.5)
       ctrl.setAutoRotate(true)
       ctrl.setParticles(true)
+      ctrl.setGlow(0.18) // soft glow by default (low light pollution)
+      ctrl.setDensity(0.25) // remembered now, applied when build() runs
       // any user interaction (rotate / pan / zoom) stops the auto-spin
       ctx.controls.addEventListener('start', () => {
         ctrl.setAutoRotate(false)
@@ -51,49 +51,54 @@ export default function FourWingLorenz() {
       // side; spinning about this same (z) axis keeps it a star (never the figure-8)
       minDistance: 18,
       maxDistance: 320,
-      bloom: { strength: 0.6, radius: 0.45, threshold: 0.08 }, // soft glow, strands stay defined
+      // soft by default — the Glow slider drives strength live; threshold lifted a
+      // touch so only the brightest cores bloom (less overall haze / light pollution)
+      bloom: { strength: 0.22, radius: 0.45, threshold: 0.1 },
       onFps: setFps,
     },
   )
 
-  // Build a density deferred (two rAFs) so the "building…" overlay paints before
-  // the synchronous integration freezes the thread (~1–2.5s). Returns a canceller.
-  const buildDeferred = useCallback(
-    (d: Density) => {
-      setBuilding(true)
-      // Prefer rAF (runs after the overlay paints), but fall back to a timer —
-      // rAF is throttled in hidden/background tabs and would never fire there.
-      let done = false
-      const run = () => {
-        if (done) return
-        done = true
-        const ctrl = instanceRef.current
-        if (!ctrl) return
-        setSegCount(ctrl.rebuild(d))
-        setBuilding(false)
-      }
-      let inner = 0
-      const outer = requestAnimationFrame(() => {
-        inner = requestAnimationFrame(run)
-      })
-      const timer = window.setTimeout(run, 250)
-      return () => {
-        cancelAnimationFrame(outer)
-        cancelAnimationFrame(inner)
-        clearTimeout(timer)
-      }
-      // instanceRef is a stable ref
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    },
-    [],
-  )
+  // One-time build, deferred (two rAFs) so the "building…" overlay paints before
+  // the synchronous integration freezes the thread (~2s at MAX_TRAJ). The density
+  // slider afterwards is cheap (draw range only) and never re-integrates.
+  const buildDeferred = useCallback(() => {
+    setBuilding(true)
+    // Prefer rAF (runs after the overlay paints), but fall back to a timer —
+    // rAF is throttled in hidden/background tabs and would never fire there.
+    let done = false
+    const run = () => {
+      if (done) return
+      done = true
+      const ctrl = instanceRef.current
+      if (!ctrl) return
+      setSegCount(ctrl.build())
+      setBuilding(false)
+    }
+    let inner = 0
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(run)
+    })
+    const timer = window.setTimeout(run, 250)
+    return () => {
+      cancelAnimationFrame(outer)
+      cancelAnimationFrame(inner)
+      clearTimeout(timer)
+    }
+    // instanceRef is a stable ref
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // first build after mount
-  useEffect(() => buildDeferred('med'), [buildDeferred])
+  useEffect(() => buildDeferred(), [buildDeferred])
 
-  const onDensity = (d: Density) => {
-    setDensity(d)
-    buildDeferred(d)
+  const onDensity = (v: number) => {
+    setDensityV(v)
+    const c = instanceRef.current?.setDensity(v / 100)
+    if (c != null) setSegCount(c)
+  }
+  const onGlow = (v: number) => {
+    setGlowV(v)
+    instanceRef.current?.setGlow(v / 100)
   }
   const onSpd = (v: number) => {
     setSpd(v)
@@ -126,7 +131,24 @@ export default function FourWingLorenz() {
       </div>
 
       <Panel title="Render">
-        <Segmented options={DENSITY_OPTIONS} value={density} onChange={onDensity} />
+        <Slider
+          label="Density"
+          value={densityV}
+          min={0}
+          max={100}
+          step={1}
+          display={`${strandsFor(densityV)} strands`}
+          onChange={onDensity}
+        />
+        <Slider
+          label="Glow"
+          value={glowV}
+          min={0}
+          max={100}
+          step={1}
+          display={(glowV / 100).toFixed(2)}
+          onChange={onGlow}
+        />
         <Slider
           label="Rotation speed"
           value={spd}

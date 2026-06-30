@@ -18,6 +18,8 @@ export interface ThreeContext {
   controls: TrackballControls
   /** The DOM element the canvas lives in. Sizing is derived from this, not `window`. */
   container: HTMLElement
+  /** Set the bloom pass strength live (no-op when the scene has no bloom pass). */
+  setBloomStrength?: (strength: number) => void
 }
 
 export interface HarnessOptions {
@@ -88,7 +90,20 @@ export function createHarness(container: HTMLElement, opts: HarnessOptions = {})
   if (opts.maxDistance != null) controls.maxDistance = opts.maxDistance
   controls.target.set(...target)
 
-  const ctx: ThreeContext = { scene, camera, renderer, controls, container }
+  // bloomPass is declared before ctx so the context's setBloomStrength closure
+  // can reach it; it's assigned below if a bloom pass is requested.
+  let bloomPass: UnrealBloomPass | null = null
+
+  const ctx: ThreeContext = {
+    scene,
+    camera,
+    renderer,
+    controls,
+    container,
+    setBloomStrength: (s) => {
+      if (bloomPass) bloomPass.strength = Math.max(0, s)
+    },
+  }
 
   // --- optional bloom post-processing ---
   let composer: EffectComposer | null = null
@@ -96,14 +111,13 @@ export function createHarness(container: HTMLElement, opts: HarnessOptions = {})
     composer = new EffectComposer(renderer)
     composer.setPixelRatio(renderer.getPixelRatio())
     composer.addPass(new RenderPass(scene, camera))
-    composer.addPass(
-      new UnrealBloomPass(
-        new THREE.Vector2(1, 1),
-        opts.bloom.strength ?? 0.9,
-        opts.bloom.radius ?? 0.5,
-        opts.bloom.threshold ?? 0,
-      ),
+    bloomPass = new UnrealBloomPass(
+      new THREE.Vector2(1, 1),
+      opts.bloom.strength ?? 0.9,
+      opts.bloom.radius ?? 0.5,
+      opts.bloom.threshold ?? 0,
     )
+    composer.addPass(bloomPass)
   }
 
   // --- sizing ---
