@@ -24,6 +24,13 @@ export const demos: DemoEntry[] = [
     tag: 'non-orientable surface',
     Component: lazy(() => import('./klein-bottle/KleinBottle')),
   },
+  {
+    id: 'four-wing-lorenz',
+    title: 'Four-Wing Lorenz Attractor',
+    titleZh: '四翼洛伦兹吸引子',
+    tag: 'chaotic attractor',
+    Component: lazy(() => import('./four-wing-lorenz/FourWingLorenz')),
+  },
 ]
 
 export function findDemo(id: string | null | undefined): DemoEntry {
