@@ -289,8 +289,8 @@ export function createLorenzScene(ctx: ThreeContext): LorenzController {
   return {
     update(dt) {
       stepParticles(dt)
-      // spin about the pinwheel axis (z); dead-on +z view → CCW (top→left)
-      if (autoRotate) root.rotation.z += spinSpeed * SPEED_SCALE * dt
+      // spin about the pinwheel axis (z); from the back-side (-z) view this reads CW
+      if (autoRotate) root.rotation.z -= spinSpeed * SPEED_SCALE * dt
     },
     rebuild,
     setAutoRotate(on) {
