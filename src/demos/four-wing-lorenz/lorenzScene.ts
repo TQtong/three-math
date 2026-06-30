@@ -11,8 +11,9 @@ const WARM = 20000 // settle onto the strange attractor (~2 time units at dt=1e-
 const RECORD = 520000 // long wander over the attractor (~52 time units)
 const STRIDE = 70 // keep 1 of every 70 → ~7400 points/trajectory
 const TARGET_XY = 16 // world-space xy half-extent the model is scaled to fill
-const TARGET_Z = 13 // world-space z half-extent — z is normalized separately so
-// the (raw ~4.6× taller) attractor reads as a balanced volume from every angle
+const TARGET_Z = 8 // world-space z half-extent — z is normalized separately and
+// kept flatter than xy so the butterfly side view is wide and the figure-8 view
+// matches the reference proportions (the raw attractor is ~4.6× taller in z)
 const SPEED_SCALE = 0.5 // auto-rotate rad/s per unit speed
 const FLOW_SCALE = 90 // particle march: kept-point indices/s per unit flow
 const K = 500 // glow particles
