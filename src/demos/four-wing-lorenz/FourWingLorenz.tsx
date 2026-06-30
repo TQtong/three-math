@@ -47,7 +47,8 @@ export default function FourWingLorenz() {
       clearColor: 0x000000, // pure black floor for additive glow
       fog: [0x000000, 0.006],
       fov: 55,
-      cameraPosition: [16, 21, 42], // 3D tilt → sharp swirling pinwheel (not the flat round X of a dead-on view)
+      cameraPosition: [0, 0, 52], // dead-on the four-pointed star; spinning about
+      // this same (z) axis keeps it a star and never tumbles into the figure-8
       minDistance: 18,
       maxDistance: 320,
       bloom: { strength: 0.6, radius: 0.45, threshold: 0.08 }, // soft glow, strands stay defined

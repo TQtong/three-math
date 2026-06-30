@@ -14,7 +14,7 @@ const TARGET_XY = 16 // world-space xy half-extent the model is scaled to fill
 const TARGET_Z = 8 // world-space z half-extent — z is normalized separately and
 // kept flatter than xy so the butterfly side view is wide and the figure-8 view
 // matches the reference proportions (the raw attractor is ~4.6× taller in z)
-const SPEED_SCALE = 0.5 // auto-rotate rad/s per unit speed
+const SPEED_SCALE = 2.0 // auto-rotate rad/s per unit speed (visible full 360° spin)
 const FLOW_SCALE = 90 // particle march: kept-point indices/s per unit flow
 const K = 500 // glow particles
 
@@ -289,8 +289,7 @@ export function createLorenzScene(ctx: ThreeContext): LorenzController {
   return {
     update(dt) {
       stepParticles(dt)
-      // spin about the pinwheel axis (z) — counter-clockwise as seen from the
-      // camera (+z rotation: right→up, top→left), so the four wings circulate
+      // spin about the pinwheel axis (z); dead-on +z view → CCW (top→left)
       if (autoRotate) root.rotation.z += spinSpeed * SPEED_SCALE * dt
     },
     rebuild,
