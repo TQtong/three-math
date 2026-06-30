@@ -289,9 +289,9 @@ export function createLorenzScene(ctx: ThreeContext): LorenzController {
   return {
     update(dt) {
       stepParticles(dt)
-      // tumble about Y so the default animation showcases both the face-on
-      // pinwheel and the butterfly side profile (like the reference's rotation)
-      if (autoRotate) root.rotation.y += spinSpeed * SPEED_SCALE * dt
+      // spin about the pinwheel axis (z) — counter-clockwise as seen from the
+      // camera (+z rotation: right→up, top→left), so the four wings circulate
+      if (autoRotate) root.rotation.z += spinSpeed * SPEED_SCALE * dt
     },
     rebuild,
     setAutoRotate(on) {
