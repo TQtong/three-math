@@ -47,7 +47,7 @@ export default function FourWingLorenz() {
       clearColor: 0x000000, // pure black floor for additive glow
       fog: [0x000000, 0.006],
       fov: 55,
-      cameraPosition: [0, 6, 50], // down +z (slight tilt) at the pinwheel
+      cameraPosition: [16, 21, 42], // 3D tilt → sharp swirling pinwheel (not the flat round X of a dead-on view)
       minDistance: 18,
       maxDistance: 320,
       bloom: { strength: 0.6, radius: 0.45, threshold: 0.08 }, // soft glow, strands stay defined
