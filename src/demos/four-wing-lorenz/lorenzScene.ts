@@ -11,6 +11,8 @@ const WARM = 20000 // settle onto the strange attractor (~2 time units at dt=1e-
 const RECORD = 520000 // long wander over the attractor (~52 time units)
 const STRIDE = 70 // keep 1 of every 70 → ~7400 points/trajectory
 const TARGET_XY = 16 // world-space xy half-extent the model is scaled to fill
+const TARGET_Z = 13 // world-space z half-extent — z is normalized separately so
+// the (raw ~4.6× taller) attractor reads as a balanced volume from every angle
 const SPEED_SCALE = 0.5 // auto-rotate rad/s per unit speed
 const FLOW_SCALE = 90 // particle march: kept-point indices/s per unit flow
 const K = 500 // glow particles
@@ -36,7 +38,8 @@ interface Built {
   trajs: Float32Array[]
   linePos: Float32Array
   lineCol: Float32Array
-  scale: number
+  scale: number // xy scale
+  scaleZ: number // z scale (separate → balanced volume)
   segCount: number
   rMin: number // xy-radius range, for radius-based colouring of particles
   rMax: number
@@ -172,8 +175,9 @@ export function createLorenzScene(ctx: ThreeContext): LorenzController {
       }
     }
     if (raw.length === 0) {
-      return { trajs: [], linePos: new Float32Array(0), lineCol: new Float32Array(0), scale: 1, segCount: 0, rMin: 0, rMax: 1 }
+      return { trajs: [], linePos: new Float32Array(0), lineCol: new Float32Array(0), scale: 1, scaleZ: 1, segCount: 0, rMin: 0, rMax: 1 }
     }
+    const zHalf = Math.max(1e-3, (gmax[2] - gmin[2]) / 2)
     const center: Vec3 = [
       (gmin[0] + gmax[0]) / 2,
       (gmin[1] + gmax[1]) / 2,
@@ -226,7 +230,7 @@ export function createLorenzScene(ctx: ThreeContext): LorenzController {
         push(t, i + 1)
       }
     }
-    return { trajs: built, linePos, lineCol, scale: TARGET_XY / maxRxy, segCount: totalVerts / 2, rMin: minRxy, rMax: maxRxy }
+    return { trajs: built, linePos, lineCol, scale: TARGET_XY / maxRxy, scaleZ: TARGET_Z / zHalf, segCount: totalVerts / 2, rMin: minRxy, rMax: maxRxy }
   }
 
   /** Cheap step: build THREE objects from a (cached) Built. */
@@ -234,7 +238,7 @@ export function createLorenzScene(ctx: ThreeContext): LorenzController {
     trajs = b.trajs
     curRMin = b.rMin
     curRSpan = Math.max(1e-3, b.rMax - b.rMin)
-    root.scale.setScalar(b.scale)
+    root.scale.set(b.scale, b.scale, b.scaleZ)
 
     lineGeo = new THREE.BufferGeometry()
     lineGeo.setAttribute(
@@ -284,7 +288,9 @@ export function createLorenzScene(ctx: ThreeContext): LorenzController {
   return {
     update(dt) {
       stepParticles(dt)
-      if (autoRotate) root.rotation.z += spinSpeed * SPEED_SCALE * dt
+      // tumble about Y so the default animation showcases both the face-on
+      // pinwheel and the butterfly side profile (like the reference's rotation)
+      if (autoRotate) root.rotation.y += spinSpeed * SPEED_SCALE * dt
     },
     rebuild,
     setAutoRotate(on) {

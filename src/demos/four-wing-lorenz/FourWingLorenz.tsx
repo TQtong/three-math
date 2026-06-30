@@ -47,7 +47,7 @@ export default function FourWingLorenz() {
       clearColor: 0x000000, // pure black floor for additive glow
       fog: [0x000000, 0.006],
       fov: 55,
-      cameraPosition: [0, 2, 76], // nearly straight down +z at the pinwheel
+      cameraPosition: [0, 6, 50], // down +z (slight tilt) at the pinwheel
       minDistance: 18,
       maxDistance: 320,
       bloom: { strength: 0.6, radius: 0.45, threshold: 0.08 }, // soft glow, strands stay defined
@@ -60,18 +60,26 @@ export default function FourWingLorenz() {
   const buildDeferred = useCallback(
     (d: Density) => {
       setBuilding(true)
+      // Prefer rAF (runs after the overlay paints), but fall back to a timer —
+      // rAF is throttled in hidden/background tabs and would never fire there.
+      let done = false
+      const run = () => {
+        if (done) return
+        done = true
+        const ctrl = instanceRef.current
+        if (!ctrl) return
+        setSegCount(ctrl.rebuild(d))
+        setBuilding(false)
+      }
       let inner = 0
       const outer = requestAnimationFrame(() => {
-        inner = requestAnimationFrame(() => {
-          const ctrl = instanceRef.current
-          if (!ctrl) return
-          setSegCount(ctrl.rebuild(d))
-          setBuilding(false)
-        })
+        inner = requestAnimationFrame(run)
       })
+      const timer = window.setTimeout(run, 250)
       return () => {
         cancelAnimationFrame(outer)
         cancelAnimationFrame(inner)
+        clearTimeout(timer)
       }
       // instanceRef is a stable ref
       // eslint-disable-next-line react-hooks/exhaustive-deps
